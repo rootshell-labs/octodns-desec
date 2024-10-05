@@ -24,7 +24,6 @@ tests_require = (
     'pytest',
     'pytest-cov',
     'pytest-network',
-    # TODO: other test-time requirements
 )
 
 setup(
@@ -46,20 +45,20 @@ setup(
             'isort>=5.11.5',
             'pyflakes>=2.2.0',
             'readme_renderer[md]>=26.0',
-            'twine>=3.4.2',
+            'twine>=3.4.2'
         ),
         'test': tests_require,
     },
     install_requires=(
         'octodns>=1.0.0',
-        # TODO: other requirements
+        'requests>=2.32.3'
     ),
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown',
     name='octodns-desec',
     packages=find_packages(),
-    python_requires='>=3.6',
+    python_requires='>=3.10',
     tests_require=tests_require,
     url='https://github.com/octodns/octodns-desec',
     version=version(),

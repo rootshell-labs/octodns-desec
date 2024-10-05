@@ -1,11 +1,5 @@
-## TODO: v0.0.1 - 20??-??-?? - Moving
+## v0.0.1 - 2024-10-06 - first releas
 
 #### Nothworthy Changes
 
-* Initial extraction of DesecProvider from octoDNS core
-
-TODO: anything else
-
-#### Stuff
-
-TODO: anything else
+* first release
