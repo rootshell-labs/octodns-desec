@@ -59,17 +59,27 @@ class DesecAPI():
     API_BASE_URL = 'https://desec.io/api'
     API_DOMAINS_URL = f'{API_BASE_URL}/v1/domains'
 
-    # TODO: add option to customize DEFAULT_*
     DEFAULT_RETRIES = 5
     DEFAULT_INIT_BACKOFF = 2
     DEFAULT_MAX_SLEEP = 600
 
-    def __init__(self, token):
+    def __init__(self, token, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP):
         self.token = token
+        self.retries = retries
+        self.backoff = backoff
+        self.max_sleep = max_sleep
+
         self.log = logging.getLogger(f'DesecAPI')
+
         return
 
-    def _send_request(self, url, method, headers=None, data=None, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP, returncode=200):
+    def _send_request(self, url, method, headers=None, data=None, retries=None, backoff=None, max_sleep=None, returncode=200):
+        if retries is None:
+            retries = self.retries
+        if backoff is None:
+            backoff = self.backoff
+        if max_sleep is None:
+            max_sleep = self.max_sleep
         if headers is None:
             headers = dict()
 
@@ -161,6 +171,9 @@ class DesecProvider(BaseProvider):
         self,
         id,
         token,
+        retries=DesecAPI.DEFAULT_RETRIES,
+        backoff=DesecAPI.DEFAULT_INIT_BACKOFF,
+        max_sleep=DesecAPI.DEFAULT_MAX_SLEEP,
         *args,
         **kwargs,
     ):
@@ -169,7 +182,7 @@ class DesecProvider(BaseProvider):
             '__init__: id=%s',
             id
         )
-        self.desec_api = DesecAPI(token)
+        self.desec_api = DesecAPI(token, retries, backoff, max_sleep)
         self._zone_records = {}
 
         super().__init__(id)

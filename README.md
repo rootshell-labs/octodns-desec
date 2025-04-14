@@ -18,6 +18,13 @@ providers:
     class: octodns_desec.DesecProvider
     # Your deSEC API token (required)
     token: env/DESEC_TOKEN
+    # (optional) max retries of each API request
+    retries: 5
+    # (optional) initial exponential backoff of each API request in seconds
+    backoff: 2
+    # (optional) maximum wait before retrying an API request in seconds
+    # should the deSEC API request a wait time (once throttled) greater than this, this provider will fail
+    max_sleep: 600
 ```
 
 ### Support Information
