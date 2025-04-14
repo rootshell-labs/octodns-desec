@@ -20,6 +20,8 @@ providers:
     token: env/DESEC_TOKEN
     # (optional) max retries of each API request
     retries: 5
+    # (optional) timeout of each API request
+    timeout: 30
     # (optional) initial exponential backoff of each API request in seconds
     backoff: 2
     # (optional) maximum wait before retrying an API request in seconds

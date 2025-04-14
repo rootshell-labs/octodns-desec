@@ -60,12 +60,14 @@ class DesecAPI():
     API_DOMAINS_URL = f'{API_BASE_URL}/v1/domains'
 
     DEFAULT_RETRIES = 5
+    DEFAULT_TIMEOUT = 30
     DEFAULT_INIT_BACKOFF = 2
     DEFAULT_MAX_SLEEP = 600
 
-    def __init__(self, token, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP):
+    def __init__(self, token, retries=DEFAULT_RETRIES, timeout=DEFAULT_TIMEOUT, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP):
         self.token = token
         self.retries = retries
+        self.timeout = timeout
         self.backoff = backoff
         self.max_sleep = max_sleep
 
@@ -73,9 +75,11 @@ class DesecAPI():
 
         return
 
-    def _send_request(self, url, method, headers=None, data=None, retries=None, backoff=None, max_sleep=None, returncode=200):
+    def _send_request(self, url, method, headers=None, data=None, retries=None, timeout=None, backoff=None, max_sleep=None, returncode=200):
         if retries is None:
             retries = self.retries
+        if timeout is None:
+            timeout = self.timeout
         if backoff is None:
             backoff = self.backoff
         if max_sleep is None:
@@ -88,10 +92,10 @@ class DesecAPI():
             match method.lower():
                 case 'get':
                     self.log.debug('sending get-request to api')
-                    r = requests.get(url, headers=headers)
+                    r = requests.get(url, headers=headers, timeout=timeout)
                 case 'patch':
                     self.log.debug('sending patch-request to api')
-                    r = requests.patch(url, headers=headers, data=data)
+                    r = requests.patch(url, headers=headers, timeout=timeout, data=data)
                 case _:
                     raise DesecAPIMethodNotImlemented('not implemented method')
         except (requests.RequestException, requests.ConnectionError, requests.HTTPError, requests.ConnectTimeout, requests.ReadTimeout, requests.Timeout) as exception:
@@ -126,7 +130,7 @@ class DesecAPI():
 
                 self.log.warning(f'retry in {sleep_time} sec')
                 time.sleep(sleep_time)
-                r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, backoff=backoff*2, max_sleep=max_sleep, returncode=returncode)
+                r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, timeout=timeout, backoff=backoff*2, max_sleep=max_sleep, returncode=returncode)
             else:
                 raise DesecAPIMaxRetriesExceeded('too many API-retries')
 
@@ -172,6 +176,7 @@ class DesecProvider(BaseProvider):
         id,
         token,
         retries=DesecAPI.DEFAULT_RETRIES,
+        timeout=DesecAPI.DEFAULT_TIMEOUT,
         backoff=DesecAPI.DEFAULT_INIT_BACKOFF,
         max_sleep=DesecAPI.DEFAULT_MAX_SLEEP,
         *args,
@@ -182,7 +187,7 @@ class DesecProvider(BaseProvider):
             '__init__: id=%s',
             id
         )
-        self.desec_api = DesecAPI(token, retries, backoff, max_sleep)
+        self.desec_api = DesecAPI(token, retries, timeout, backoff, max_sleep)
         self._zone_records = {}
 
         super().__init__(id)
