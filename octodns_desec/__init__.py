@@ -1,4 +1,5 @@
 from octodns.provider.base import BaseProvider
+from octodns.provider import ProviderException
 from octodns.record import Record
 from collections import defaultdict
 import logging
@@ -8,6 +9,50 @@ import json
 import re
 
 __version__ = __VERSION__ = '0.0.1'
+
+
+class DesecAPIException(ProviderException):
+    pass
+
+
+class DesecProviderException(ProviderException):
+    pass
+
+
+class DesecAPIMethodNotImlemented(DesecAPIException):
+    pass
+
+
+class DesecAPIBadRequest(DesecAPIException):
+    def __init__(self):
+        super(DesecAPIBadRequest, self).__init__('Bad request')
+
+
+class DesecAPIUnauthorized(DesecAPIException):
+    def __init__(self):
+        super(DesecAPIUnauthorized, self).__init__('Unauthorized')
+
+
+class DesecAPIForbidden(DesecAPIException):
+    def __init__(self):
+        super(DesecAPIForbidden, self).__init__('Forbidden')
+
+
+class DesecAPINotFound(DesecAPIException):
+    def __init__(self):
+        super(DesecAPINotFound, self).__init__('Not found')
+
+
+class DesecAPIMaxRetriesExceeded(DesecAPIException):
+    pass
+
+
+class DesecAPIMaxSleepExceeded(DesecAPIException):
+    pass
+
+
+class DesecProviderChangeTypeNotImplemented(DesecProviderException):
+    pass
 
 
 class DesecAPI():
@@ -27,18 +72,35 @@ class DesecAPI():
     def _send_request(self, url, method, headers=None, data=None, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP, returncode=200):
         if headers is None:
             headers = dict()
-        match method.lower():
-            case 'get':
-                self.log.debug('sending get-request to api')
-                r = requests.get(url, headers=headers)
-            case 'patch':
-                self.log.debug('sending patch-request to api')
-                r = requests.patch(url, headers=headers, data=data)
-            case _:
-                raise Exception('not implemented method')
 
-        if r.status_code != returncode:
-            self.log.warning(f'API-Response: ({r.status_code}) {r.content.decode('UTF-8')}')
+        r = None
+        try:
+            match method.lower():
+                case 'get':
+                    self.log.debug('sending get-request to api')
+                    r = requests.get(url, headers=headers)
+                case 'patch':
+                    self.log.debug('sending patch-request to api')
+                    r = requests.patch(url, headers=headers, data=data)
+                case _:
+                    raise DesecAPIMethodNotImlemented('not implemented method')
+        except (requests.RequestException, requests.ConnectionError, requests.HTTPError, requests.ConnectTimeout, requests.ReadTimeout, requests.Timeout) as exception:
+            self.log.warning(f'Request failed with exception: {exception}')
+
+        if r is not None and r.status_code != returncode:
+            self.log.warning(f'API-Response: status code: {r.status_code} (expected {returncode}), content: {r.content.decode('UTF-8')}')
+
+            # No retrying will fix these http error
+            if r.status_code == 400:
+                raise DesecAPIBadRequest()
+            if r.status_code == 401:
+                raise DesecAPIUnauthorized()
+            elif r.status_code == 403:
+                raise DesecAPIForbidden()
+            elif r.status_code == 404:
+                raise DesecAPINotFound()
+
+        if r is None or r.status_code != returncode:
             if retries > 0:
                 sleep_time = min(backoff, max_sleep)
 
@@ -48,15 +110,15 @@ class DesecAPI():
                     self.log.warning('Extracted wait time from API response')
 
                     if sleep_time > max_sleep:
-                        raise Exception(f'API will still not be available once max_sleep (of {max_sleep} seconds) runs out')
+                        raise DesecAPIMaxSleepExceeded(f'API will still not be available once max_sleep (of {max_sleep} seconds) runs out')
                 except (ValueError, AttributeError, IndexError, KeyError, requests.exceptions.JSONDecodeError):
                     pass
 
-                self.log.warning(f'API-Statuscode {r.status_code}, expected {returncode} - retry in {sleep_time} sec')
+                self.log.warning(f'retry in {sleep_time} sec')
                 time.sleep(sleep_time)
                 r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, backoff=backoff*2, max_sleep=max_sleep, returncode=returncode)
             else:
-                raise Exception('too many API-retries')
+                raise DesecAPIMaxRetriesExceeded('too many API-retries')
 
         return r
 
@@ -161,7 +223,6 @@ class DesecProvider(BaseProvider):
         update = []
 
         for change in plan.changes:
-
             match change.data['type']:
                 case 'delete':
                     update.append(
@@ -176,7 +237,7 @@ class DesecProvider(BaseProvider):
                         {"subname": change.new.decoded_name, "type": change.new.rrs[2], "ttl": change.new.rrs[1], "records": change.new.rrs[3]}
                     )
                 case _:
-                    raise Exception('not implemented type')
+                    raise DesecProviderChangeTypeNotImplemented('not implemented type')
 
         self.desec_api.update_rrset(plan.desired.decoded_name.rstrip('.'), update)
 
