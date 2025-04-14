@@ -20,11 +20,7 @@ def version():
 
 description, long_description = descriptions()
 
-tests_require = (
-    'pytest',
-    'pytest-cov',
-    'pytest-network',
-)
+tests_require = ('pytest', 'pytest-cov', 'pytest-network')
 
 setup(
     author='TilCreator and blackdotraven',
@@ -45,14 +41,11 @@ setup(
             'isort>=5.11.5',
             'pyflakes>=2.2.0',
             'readme_renderer[md]>=26.0',
-            'twine>=3.4.2'
+            'twine>=3.4.2',
         ),
         'test': tests_require,
     },
-    install_requires=(
-        'octodns>=1.0.0',
-        'requests>=2.32.3'
-    ),
+    install_requires=('octodns>=1.0.0', 'requests>=2.32.3'),
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown',

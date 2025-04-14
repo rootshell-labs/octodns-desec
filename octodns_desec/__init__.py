@@ -1,12 +1,14 @@
-from octodns.provider.base import BaseProvider
-from octodns.provider import ProviderException
-from octodns.record import Record
-from collections import defaultdict
-import logging
-import requests
-import time
 import json
+import logging
 import re
+import time
+from collections import defaultdict
+
+import requests
+
+from octodns.provider import ProviderException
+from octodns.provider.base import BaseProvider
+from octodns.record import Record
 
 __version__ = __VERSION__ = '0.0.1'
 
@@ -55,7 +57,7 @@ class DesecProviderChangeTypeNotImplemented(DesecProviderException):
     pass
 
 
-class DesecAPI():
+class DesecAPI:
     API_BASE_URL = 'https://desec.io/api'
     API_DOMAINS_URL = f'{API_BASE_URL}/v1/domains'
 
@@ -64,18 +66,36 @@ class DesecAPI():
     DEFAULT_INIT_BACKOFF = 2
     DEFAULT_MAX_SLEEP = 600
 
-    def __init__(self, token, retries=DEFAULT_RETRIES, timeout=DEFAULT_TIMEOUT, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP):
+    def __init__(
+        self,
+        token,
+        retries=DEFAULT_RETRIES,
+        timeout=DEFAULT_TIMEOUT,
+        backoff=DEFAULT_INIT_BACKOFF,
+        max_sleep=DEFAULT_MAX_SLEEP,
+    ):
         self.token = token
         self.retries = retries
         self.timeout = timeout
         self.backoff = backoff
         self.max_sleep = max_sleep
 
-        self.log = logging.getLogger(f'DesecAPI')
+        self.log = logging.getLogger('DesecAPI')
 
         return
 
-    def _send_request(self, url, method, headers=None, data=None, retries=None, timeout=None, backoff=None, max_sleep=None, returncode=200):
+    def _send_request(
+        self,
+        url,
+        method,
+        headers=None,
+        data=None,
+        retries=None,
+        timeout=None,
+        backoff=None,
+        max_sleep=None,
+        returncode=200,
+    ):
         if retries is None:
             retries = self.retries
         if timeout is None:
@@ -95,14 +115,25 @@ class DesecAPI():
                     r = requests.get(url, headers=headers, timeout=timeout)
                 case 'patch':
                     self.log.debug('sending patch-request to api')
-                    r = requests.patch(url, headers=headers, timeout=timeout, data=data)
+                    r = requests.patch(
+                        url, headers=headers, timeout=timeout, data=data
+                    )
                 case _:
                     raise DesecAPIMethodNotImlemented('not implemented method')
-        except (requests.RequestException, requests.ConnectionError, requests.HTTPError, requests.ConnectTimeout, requests.ReadTimeout, requests.Timeout) as exception:
+        except (
+            requests.RequestException,
+            requests.ConnectionError,
+            requests.HTTPError,
+            requests.ConnectTimeout,
+            requests.ReadTimeout,
+            requests.Timeout,
+        ) as exception:
             self.log.warning(f'Request failed with exception: {exception}')
 
         if r is not None and r.status_code != returncode:
-            self.log.warning(f'API-Response: status code: {r.status_code} (expected {returncode}), content: {r.content.decode('UTF-8')}')
+            self.log.warning(
+                f'API-Response: status code: {r.status_code} (expected {returncode}), content: {r.content.decode('UTF-8')}'
+            )
 
             # No retrying will fix these http error
             if r.status_code == 400:
@@ -119,18 +150,41 @@ class DesecAPI():
                 sleep_time = min(backoff, max_sleep)
 
                 try:
-                    sleep_time = int(re.fullmatch(r'Request was throttled. Expected available in (\d+) seconds?.', r.json()['detail']).group(1))
+                    sleep_time = int(
+                        re.fullmatch(
+                            r'Request was throttled. Expected available in (\d+) seconds?.',
+                            r.json()['detail'],
+                        ).group(1)
+                    )
 
                     self.log.warning('Extracted wait time from API response')
 
                     if sleep_time > max_sleep:
-                        raise DesecAPIMaxSleepExceeded(f'API will still not be available once max_sleep (of {max_sleep} seconds) runs out')
-                except (ValueError, AttributeError, IndexError, KeyError, requests.exceptions.JSONDecodeError):
+                        raise DesecAPIMaxSleepExceeded(
+                            f'API will still not be available once max_sleep (of {max_sleep} seconds) runs out'
+                        )
+                except (
+                    ValueError,
+                    AttributeError,
+                    IndexError,
+                    KeyError,
+                    requests.exceptions.JSONDecodeError,
+                ):
                     pass
 
                 self.log.warning(f'retry in {sleep_time} sec')
                 time.sleep(sleep_time)
-                r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, timeout=timeout, backoff=backoff*2, max_sleep=max_sleep, returncode=returncode)
+                r = self._send_request(
+                    url=url,
+                    method=method,
+                    headers=headers,
+                    data=data,
+                    retries=retries - 1,
+                    timeout=timeout,
+                    backoff=backoff * 2,
+                    max_sleep=max_sleep,
+                    returncode=returncode,
+                )
             else:
                 raise DesecAPIMaxRetriesExceeded('too many API-retries')
 
@@ -140,7 +194,11 @@ class DesecAPI():
         return_json = []
         url = f'{DesecAPI.API_DOMAINS_URL}/{domainName}/rrsets/?cursor='
         while url != '':
-            response = self._send_request(url, method='get', headers={'Authorization': f'Token {self.token}'})
+            response = self._send_request(
+                url,
+                method='get',
+                headers={'Authorization': f'Token {self.token}'},
+            )
             return_json = return_json + response.json()
 
             if 'next' in response.links:
@@ -150,8 +208,16 @@ class DesecAPI():
 
         return return_json
 
-    def update_rrset(self, domainName, rrset:list):
-        self._send_request(f'{DesecAPI.API_DOMAINS_URL}/{domainName}/rrsets/', method='patch', headers={'Authorization': f'Token {self.token}', 'Content-Type': 'application/json'}, data=json.dumps(rrset))
+    def update_rrset(self, domainName, rrset: list):
+        self._send_request(
+            f'{DesecAPI.API_DOMAINS_URL}/{domainName}/rrsets/',
+            method='patch',
+            headers={
+                'Authorization': f'Token {self.token}',
+                'Content-Type': 'application/json',
+            },
+            data=json.dumps(rrset),
+        )
 
 
 class DesecProvider(BaseProvider):
@@ -183,10 +249,7 @@ class DesecProvider(BaseProvider):
         **kwargs,
     ):
         self.log = logging.getLogger(f'desecProvider[{id}]')
-        self.log.debug(
-            '__init__: id=%s',
-            id
-        )
+        self.log.debug('__init__: id=%s', id)
         self.desec_api = DesecAPI(token, retries, timeout, backoff, max_sleep)
         self._zone_records = {}
 
@@ -205,15 +268,19 @@ class DesecProvider(BaseProvider):
                         'type': record['type'],
                         'name': record['subname'],
                         'ttl': record['ttl'],
-                        'data': data
+                        'data': data,
                     }
                 )
 
         return records
 
     def populate(self, zone, target=False, lenient=False):
-        self.log.debug('populate: name=%s, target=%s, lenient=%s', zone.name,
-                       target, lenient)
+        self.log.debug(
+            'populate: name=%s, target=%s, lenient=%s',
+            zone.name,
+            target,
+            lenient,
+        )
 
         # fetch data from API and save to values
         values = defaultdict(lambda: defaultdict(list))
@@ -228,15 +295,19 @@ class DesecProvider(BaseProvider):
         for name, types in values.items():
             for _type, records in types.items():
                 data = getattr(self, f'_data_for_{_type}')(_type, records)
-                record = Record.new(zone, name, data,
-                                    source=self, lenient=lenient)
+                record = Record.new(
+                    zone, name, data, source=self, lenient=lenient
+                )
                 zone.add_record(record, lenient=lenient)
 
         exists = zone.name in self._zone_records
-        self.log.info('populate:   found %s records, exists=%s',
-                      len(zone.records) - before, exists)
+        self.log.info(
+            'populate:   found %s records, exists=%s',
+            len(zone.records) - before,
+            exists,
+        )
         return exists
-    
+
     def _apply(self, plan):
         update = []
 
@@ -244,33 +315,52 @@ class DesecProvider(BaseProvider):
             match change.data['type']:
                 case 'delete':
                     update.append(
-                        {"subname": change.existing.decoded_name, "type": change.existing.rrs[2], "ttl": '3600', "records": []} # fixed ttl - else if your ttl is 60 for dyndns-records you can not dedlete them
+                        {
+                            "subname": change.existing.decoded_name,
+                            "type": change.existing.rrs[2],
+                            "ttl": '3600',  # fixed ttl - else if your ttl is 60 for dyndns-records you can not dedlete them
+                            "records": [],
+                        }
                     )
                 case 'create':
                     update.append(
-                        {"subname": change.new.decoded_name, "type": change.new.rrs[2], "ttl": change.new.rrs[1], "records": change.new.rrs[3]}
+                        {
+                            "subname": change.new.decoded_name,
+                            "type": change.new.rrs[2],
+                            "ttl": change.new.rrs[1],
+                            "records": change.new.rrs[3],
+                        }
                     )
                 case 'update':
                     update.append(
-                        {"subname": change.new.decoded_name, "type": change.new.rrs[2], "ttl": change.new.rrs[1], "records": change.new.rrs[3]}
+                        {
+                            "subname": change.new.decoded_name,
+                            "type": change.new.rrs[2],
+                            "ttl": change.new.rrs[1],
+                            "records": change.new.rrs[3],
+                        }
                     )
                 case _:
-                    raise DesecProviderChangeTypeNotImplemented('not implemented type')
+                    raise DesecProviderChangeTypeNotImplemented(
+                        'not implemented type'
+                    )
 
-        self.desec_api.update_rrset(plan.desired.decoded_name.rstrip('.'), update)
+        self.desec_api.update_rrset(
+            plan.desired.decoded_name.rstrip('.'), update
+        )
 
     def _data_for_multiple(self, _type, records):
         return {
             'ttl': records[0]['ttl'],
             'type': _type,
-            'values': [record['data'] for record in records]
+            'values': [record['data'] for record in records],
         }
 
     def _data_for_single(self, _type, records):
         return {
             'ttl': records[0]['ttl'],
             'type': _type,
-            'value': records[0]['data']
+            'value': records[0]['data'],
         }
 
     def _data_for_TXT(self, _type, records):
@@ -278,7 +368,9 @@ class DesecProvider(BaseProvider):
             'ttl': records[0]['ttl'],
             'type': _type,
             # escape semicolons
-            'values': [record['data'].replace(';', '\\;') for record in records],
+            'values': [
+                record['data'].replace(';', '\\;') for record in records
+            ],
         }
 
     def _data_for_MX(self, _type, records):
@@ -324,9 +416,15 @@ class DesecProvider(BaseProvider):
         for record in records:
             values.append(
                 {
-                    'flags': record['data'].split(' ')[0].lstrip('"').rstrip('"'),
+                    'flags': record['data']
+                    .split(' ')[0]
+                    .lstrip('"')
+                    .rstrip('"'),
                     'tag': record['data'].split(' ')[1].lstrip('"').rstrip('"'),
-                    'value': record['data'].split(' ')[2].lstrip('"').strip('"'),
+                    'value': record['data']
+                    .split(' ')[2]
+                    .lstrip('"')
+                    .strip('"'),
                 }
             )
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
@@ -339,7 +437,9 @@ class DesecProvider(BaseProvider):
                     'certificate_usage': record['data'].split(' ')[0],
                     'selector': record['data'].split(' ')[1],
                     'matching_type': record['data'].split(' ')[2],
-                    'certificate_association_data': record['data'].split(' ')[3],
+                    'certificate_association_data': record['data'].split(' ')[
+                        3
+                    ],
                 }
             )
         return {'ttl': records[0]['ttl'], 'type': _type, 'values': values}
