@@ -5,6 +5,7 @@ import logging
 import requests
 import time
 import json
+import re
 
 __version__ = __VERSION__ = '0.0.1'
 
@@ -12,17 +13,18 @@ __version__ = __VERSION__ = '0.0.1'
 class DesecAPI():
     API_BASE_URL = 'https://desec.io/api'
     API_DOMAINS_URL = f'{API_BASE_URL}/v1/domains'
+
     # TODO: add option to customize DEFAULT_*
-    # TODO: add customizeable option for maxium waiting time
     DEFAULT_RETRIES = 5
     DEFAULT_INIT_BACKOFF = 2
+    DEFAULT_MAX_SLEEP = 600
+
     def __init__(self, token):
         self.token = token
         self.log = logging.getLogger(f'DesecAPI')
         return
 
-    def _send_request(self, url, method, headers=None, data=None, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, returncode=200):
-        # TODO: parse HTTP429 {"detail":"Request was throttled. Expected available in 1 second."}
+    def _send_request(self, url, method, headers=None, data=None, retries=DEFAULT_RETRIES, backoff=DEFAULT_INIT_BACKOFF, max_sleep=DEFAULT_MAX_SLEEP, returncode=200):
         if headers is None:
             headers = dict()
         match method.lower():
@@ -36,11 +38,23 @@ class DesecAPI():
                 raise Exception('not implemented method')
 
         if r.status_code != returncode:
-            self.log.warning(f'API-Response: {r.content.decode("UTF-8")}')
+            self.log.warning(f'API-Response: ({r.status_code}) {r.content.decode('UTF-8')}')
             if retries > 0:
-                self.log.warning(f'API-Statuscode {r.status_code}, expected {returncode} - retry in {backoff} sec')
-                time.sleep(backoff)
-                r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, backoff=backoff*2, returncode=returncode)
+                sleep_time = min(backoff, max_sleep)
+
+                try:
+                    sleep_time = int(re.fullmatch(r'Request was throttled. Expected available in (\d+) seconds?.', r.json()['detail']).group(1))
+
+                    self.log.warning('Extracted wait time from API response')
+
+                    if sleep_time > max_sleep:
+                        raise Exception(f'API will still not be available once max_sleep (of {max_sleep} seconds) runs out')
+                except (ValueError, AttributeError, IndexError, KeyError, requests.exceptions.JSONDecodeError):
+                    pass
+
+                self.log.warning(f'API-Statuscode {r.status_code}, expected {returncode} - retry in {sleep_time} sec')
+                time.sleep(sleep_time)
+                r = self._send_request(url=url, method=method, headers=headers, data=data, retries=retries-1, backoff=backoff*2, max_sleep=max_sleep, returncode=returncode)
             else:
                 raise Exception('too many API-retries')
 
