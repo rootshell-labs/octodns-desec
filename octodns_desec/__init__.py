@@ -45,6 +45,10 @@ class DesecAPINotFound(DesecAPIException):
         super(DesecAPINotFound, self).__init__('Not found')
 
 
+class DesecAPINotFoundFromAPI(DesecAPINotFound):
+    pass
+
+
 class DesecAPIMaxRetriesExceeded(DesecAPIException):
     pass
 
@@ -113,6 +117,11 @@ class DesecAPI:
                 case 'get':
                     self.log.debug('sending get-request to api')
                     r = requests.get(url, headers=headers, timeout=timeout)
+                case 'post':
+                    self.log.debug('sending post-request to api')
+                    r = requests.post(
+                        url, headers=headers, timeout=timeout, data=data
+                    )
                 case 'patch':
                     self.log.debug('sending patch-request to api')
                     r = requests.patch(
@@ -143,6 +152,12 @@ class DesecAPI:
             elif r.status_code == 403:
                 raise DesecAPIForbidden()
             elif r.status_code == 404:
+                try:
+                    if r.json() == {"detail": "Not found."}:
+                        raise DesecAPINotFoundFromAPI()
+                except requests.exceptions.JSONDecodeError:
+                    pass
+
                 raise DesecAPINotFound()
 
         if r is None or r.status_code != returncode:
@@ -190,6 +205,41 @@ class DesecAPI:
 
         return r
 
+    # https://desec.readthedocs.io/en/latest/dns/domains.html#listing-domains
+    def get_domains(self):
+        return_json = []
+        url = f'{DesecAPI.API_DOMAINS_URL}/?cursor='
+        while url != '':
+            response = self._send_request(
+                url,
+                method='get',
+                headers={'Authorization': f'Token {self.token}'},
+            )
+            return_json = return_json + response.json()
+
+            if 'next' in response.links:
+                url = response.links['next']['url']
+            else:
+                url = ''
+
+        return return_json
+
+    # https://desec.readthedocs.io/en/latest/dns/domains.html#creating-a-domain
+    def create_domain(self, domain):
+        url = f'{DesecAPI.API_DOMAINS_URL}/'
+        data = {"name": domain}
+        return self._send_request(
+            url,
+            method='post',
+            headers={
+                'Authorization': f'Token {self.token}',
+                'Content-Type': 'application/json',
+            },
+            data=json.dumps(data),
+            returncode=201,
+        ).json()
+
+    # https://desec.readthedocs.io/en/latest/dns/rrsets.html#retrieving-all-rrsets-in-a-zone
     def get_rrset(self, domainName):
         return_json = []
         url = f'{DesecAPI.API_DOMAINS_URL}/{domainName}/rrsets/?cursor='
@@ -208,6 +258,7 @@ class DesecAPI:
 
         return return_json
 
+    # https://desec.readthedocs.io/en/latest/dns/rrsets.html#modifying-an-rrset
     def update_rrset(self, domainName, rrset: list):
         self._send_request(
             f'{DesecAPI.API_DOMAINS_URL}/{domainName}/rrsets/',
@@ -251,15 +302,23 @@ class DesecProvider(BaseProvider):
         self.log = logging.getLogger(f'desecProvider[{id}]')
         self.log.debug('__init__: id=%s', id)
         self.desec_api = DesecAPI(token, retries, timeout, backoff, max_sleep)
-        self._zone_records = {}
 
         super().__init__(id)
+
+    def list_zones(self):
+        return [
+            domain_field["name"]
+            for domain_field in self.desec_api.get_domains()
+        ]
 
     def zone_records(self, zone_name):
         # Fetch records from Desec-API that already exist
         records = []
 
-        rrset = self.desec_api.get_rrset(zone_name.name.rstrip('.'))
+        try:
+            rrset = self.desec_api.get_rrset(zone_name.name.rstrip('.'))
+        except DesecAPINotFoundFromAPI:
+            return []
 
         for record in rrset:
             for data in record['records']:
@@ -300,7 +359,7 @@ class DesecProvider(BaseProvider):
                 )
                 zone.add_record(record, lenient=lenient)
 
-        exists = zone.name in self._zone_records
+        exists = len(zone.records) > 0
         self.log.info(
             'populate:   found %s records, exists=%s',
             len(zone.records) - before,
@@ -344,6 +403,23 @@ class DesecProvider(BaseProvider):
                     raise DesecProviderChangeTypeNotImplemented(
                         'not implemented type'
                     )
+
+        if not plan.exists:
+            r = self.desec_api.create_domain(plan.desired.name.rstrip('.'))
+
+            self.log.warning("*" * 10)
+            self.log.warning(
+                f"Created domain {plan.desired.name.rstrip('.')}, make sure to setup DNSSEC! (login at deSEC for details)"
+            )
+            self.log.warning(f"DNSKEY: {r["keys"][0]["dnskey"]}")
+            for ds in r["keys"][0]["ds"]:
+                self.log.warning(f"DS: {ds}")
+            self.log.warning("NS: ns1.desec.io.")
+            self.log.warning("NS: ns2.desec.org.")
+            self.log.warning(
+                f"then check with https://dnssec-analyzer.verisignlabs.com/{plan.desired.name.rstrip('.')}"
+            )
+            self.log.warning("*" * 10)
 
         self.desec_api.update_rrset(
             plan.desired.decoded_name.rstrip('.'), update
