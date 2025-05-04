@@ -53,6 +53,6 @@ setup(
     packages=find_packages(),
     python_requires='>=3.10',
     tests_require=tests_require,
-    url='https://github.com/octodns/octodns-desec',
+    url='https://github.com/rootshell-labs/octodns-desec',
     version=version(),
 )
