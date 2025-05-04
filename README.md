@@ -29,6 +29,12 @@ providers:
     max_sleep: 600
 ```
 
+### Maintainers
+This project is build and maintained in our free time.
+(We are no members, just users of deSEC.)
+- [blackdotraven](https://github.com/blackdotraven)
+- [tilcreator](https://github.com/TilCreator/)
+
 ### Support Information
 
 #### Records
