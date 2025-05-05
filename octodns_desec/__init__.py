@@ -109,7 +109,7 @@ class DesecAPI:
         if max_sleep is None:
             max_sleep = self.max_sleep
         if headers is None:
-            headers = dict()
+            headers = {}
 
         r = None
         try:
