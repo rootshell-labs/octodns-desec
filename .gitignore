@@ -12,3 +12,6 @@ nosetests.xml
 octodns_*.egg-info/
 *__pycache__
 .idea/
+.direnv/
+.pre-commit-config.yaml
+result
