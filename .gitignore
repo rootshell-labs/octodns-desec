@@ -11,3 +11,6 @@ htmlcov/
 nosetests.xml
 octodns_*.egg-info/
 *__pycache__
+.direnv/
+.pre-commit-config.yaml
+result
