@@ -141,7 +141,7 @@ class DesecAPI:
 
         if r is not None and r.status_code != returncode:
             self.log.warning(
-                f'API-Response: status code: {r.status_code} (expected {returncode}), content: {r.content.decode('UTF-8')}'
+                f"API-Response: status code: {r.status_code} (expected {returncode}), content: {r.content.decode('UTF-8')}"
             )
 
             # No retrying will fix these http error
@@ -411,7 +411,7 @@ class DesecProvider(BaseProvider):
             self.log.warning(
                 f"Created domain {plan.desired.name.rstrip('.')}, make sure to setup DNSSEC! (login at deSEC for details)"
             )
-            self.log.warning(f"DNSKEY: {r["keys"][0]["dnskey"]}")
+            self.log.warning(f'DNSKEY: {r["keys"][0]["dnskey"]}')
             for ds in r["keys"][0]["ds"]:
                 self.log.warning(f"DS: {ds}")
             self.log.warning("NS: ns1.desec.io.")
