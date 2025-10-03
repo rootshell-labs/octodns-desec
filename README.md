@@ -46,6 +46,7 @@ DesecProvider supports:
 - CAA
 - CNAME
 - DS
+- HTTPS
 - MX
 - NS
 - PTR
@@ -55,9 +56,8 @@ DesecProvider supports:
 
 #### unsupported Records
 
-Records not supported by OctoDNS but by deSEC:
+Records not supported:
 
-- HTTPS
 - OPENPGPKEY
 - SMIMEA
 
