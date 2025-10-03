@@ -10,7 +10,7 @@ from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
 
-__version__ = __VERSION__ = '1.0.1'
+__version__ = __VERSION__ = '1.1.0'
 
 
 class DesecAPIException(ProviderException):
