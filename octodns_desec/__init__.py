@@ -528,7 +528,7 @@ class DesecProvider(BaseProvider):
             if len(record['data'].split(' ')) > 2:
                 # iterate over all elements from index 2 to $last
                 for parameter in record['data'].split(' ')[2:]:
-                    k,v = parameter.split('=')
+                    k,v = parameter.split('=', maxsplit=1)
                     # convert some parameters to list
                     if k in ('alpn', 'ipv4hint', 'ipv6hint') :
                         v = v.split(',')
