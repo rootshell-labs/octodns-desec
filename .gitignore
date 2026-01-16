@@ -11,3 +11,4 @@ htmlcov/
 nosetests.xml
 octodns_*.egg-info/
 *__pycache__
+.idea/

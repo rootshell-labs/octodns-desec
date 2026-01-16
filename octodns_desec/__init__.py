@@ -10,7 +10,7 @@ from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
 
-__version__ = __VERSION__ = '1.1.1'
+__version__ = __VERSION__ = '1.2.0'
 
 
 class DesecAPIException(ProviderException):
@@ -284,6 +284,7 @@ class DesecProvider(BaseProvider):
         'MX',
         'NS',
         'PTR',
+        'SSHFP',
         'SRV',
         'TLSA',
         'TXT',
@@ -539,6 +540,18 @@ class DesecProvider(BaseProvider):
                     'svcpriority': record['data'].split(' ')[0],
                     'targetname': record['data'].split(' ')[1],
                     'svcparams': svcparams
+                }
+            )
+        return {'type': _type, 'ttl': records[0]['ttl'], 'values': values}
+
+    def _data_for_SSHFP(self, _type, records):
+        values = []
+        for record in records:
+            values.append(
+                {
+                    'algorithm': record['data'].split(' ')[0],
+                    'fingerprint_type': record['data'].split(' ')[1],
+                    'fingerprint': record['data'].split(' ')[2],
                 }
             )
         return {'type': _type, 'ttl': records[0]['ttl'], 'values': values}
