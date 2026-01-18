@@ -10,7 +10,7 @@ from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
 
-__version__ = __VERSION__ = '1.2.0'
+__version__ = __VERSION__ = '1.3.0'
 
 
 class DesecAPIException(ProviderException):
@@ -288,6 +288,7 @@ class DesecProvider(BaseProvider):
         'SRV',
         'TLSA',
         'TXT',
+        'OPENPGPKEY',
     }
 
     def __init__(
@@ -561,3 +562,4 @@ class DesecProvider(BaseProvider):
     _data_for_CNAME = _data_for_single
     _data_for_NS = _data_for_multiple
     _data_for_PTR = _data_for_single
+    _data_for_OPENPGPKEY = _data_for_multiple

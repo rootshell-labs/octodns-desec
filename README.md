@@ -54,13 +54,13 @@ DesecProvider supports:
 - TLSA
 - TXT
 - SSHFP
+- OPENPGPKEY
 
 #### unsupported Records (octodns)
 
 https://octodns.readthedocs.io/en/latest/api/records.html
 Records not supported at the moment:
 
-- OPENPGPKEY
 - SMIMEA
 
 #### Dynamic
