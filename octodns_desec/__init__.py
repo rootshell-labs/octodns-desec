@@ -376,30 +376,33 @@ class DesecProvider(BaseProvider):
         for change in plan.changes:
             match change.data['type']:
                 case 'delete':
+                    _, _type = self._records_for(change.existing)
                     update.append(
                         {
                             "subname": change.existing.decoded_name,
-                            "type": change.existing.rrs[2],
-                            "ttl": '3600',  # fixed ttl - else if your ttl is 60 for dyndns-records you can not dedlete them
+                            "type": _type,
+                            "ttl": '3600',  # fixed ttl - else if your ttl is 60 for dyndns-records you can not delete them
                             "records": [],
                         }
                     )
                 case 'create':
+                    records, _type = self._records_for(change.new)
                     update.append(
                         {
                             "subname": change.new.decoded_name,
-                            "type": change.new.rrs[2],
-                            "ttl": change.new.rrs[1],
-                            "records": change.new.rrs[3],
+                            "type": _type,
+                            "ttl": change.new.ttl,
+                            "records": records,
                         }
                     )
                 case 'update':
+                    records, _type = self._records_for(change.new)
                     update.append(
                         {
                             "subname": change.new.decoded_name,
-                            "type": change.new.rrs[2],
-                            "ttl": change.new.rrs[1],
-                            "records": change.new.rrs[3],
+                            "type": _type,
+                            "ttl": change.new.ttl,
+                            "records": records,
                         }
                     )
                 case _:
@@ -563,3 +566,62 @@ class DesecProvider(BaseProvider):
     _data_for_NS = _data_for_multiple
     _data_for_PTR = _data_for_single
     _data_for_OPENPGPKEY = _data_for_multiple
+
+    def _records_for(self, record):
+        name = f'_records_for_{record._type}'.replace('/', '_')
+        return getattr(self, name)(record)
+
+    def _records_for_multiple(self, record):
+        return list(record.values), record._type
+
+    def _records_for_multiple_quoted(self, record):
+        return [
+            f'"{v}"' for v in record.values
+        ], record._type
+
+    def _records_for_single(self, record):
+        return [record.value], record._type
+
+    def _records_for_MX(self, record):
+        return [
+            f'{value.preference} {value.exchange}'
+            for value in record.values
+        ], record._type
+
+    def _records_for_SRV(self, record):
+        return [
+            f'{value.priority} {value.weight} {value.port} {value.target}'
+            for value in record.values
+        ], record._type
+
+    def _records_for_DS(self, record):
+        return [
+            f'{value.key_tag} {value.algorithm} {value.digest_type} {value.digest}'
+            for value in record.values
+        ], record._type
+
+    def _records_for_CAA(self, record):
+        return [
+            f'{value.flags} {value.tag} "{value.value}"'
+            for value in record.values
+        ], record._type
+
+    def _records_for_TLSA(self, record):
+        return [
+            f'{value.certificate_usage} {value.selector} {value.matching_type} {value.certificate_association_data}'
+            for value in record.values
+        ], record._type
+
+    def _records_for_SSHFP(self, record):
+        return [
+            f'{value.algorithm} {value.fingerprint_type} {value.fingerprint}'
+            for value in record.values
+        ], record._type
+
+    _records_for_A = _records_for_multiple
+    _records_for_AAAA = _records_for_multiple
+    _records_for_CNAME = _records_for_single
+    _records_for_NS = _records_for_multiple
+    _records_for_TXT = _records_for_multiple_quoted
+    _records_for_PTR = _records_for_single
+    _records_for_OPENPGPKEY = _records_for_multiple
