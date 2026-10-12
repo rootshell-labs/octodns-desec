@@ -531,6 +531,9 @@ class DesecProvider(BaseProvider):
                 # iterate over all elements from index 2 to $last
                 for parameter in record['data'].split(' ')[2:]:
                     k,v = parameter.split('=', maxsplit=1)
+                    # quotes are presentation-format syntax (RFC 9460 2.1)
+                    if len(v) >= 2 and v[0] == v[-1] == '"':
+                        v = v[1:-1]
                     # convert some parameters to list
                     if k in ('alpn', 'ipv4hint', 'ipv6hint') :
                         v = v.split(',')
