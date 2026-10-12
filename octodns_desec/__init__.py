@@ -533,9 +533,9 @@ class DesecProvider(BaseProvider):
             if len(record['data'].split(' ')) > 2:
                 # iterate over all elements from index 2 to $last
                 for parameter in record['data'].split(' ')[2:]:
-                    k,v = parameter.split('=', maxsplit=1)
+                    k, v = parameter.split('=', maxsplit=1)
                     # convert some parameters to list
-                    if k in ('alpn', 'ipv4hint', 'ipv6hint') :
+                    if k in ('alpn', 'ipv4hint', 'ipv6hint'):
                         v = v.split(',')
                     svcparams[k] = v
 
@@ -543,7 +543,7 @@ class DesecProvider(BaseProvider):
                 {
                     'svcpriority': record['data'].split(' ')[0],
                     'targetname': record['data'].split(' ')[1],
-                    'svcparams': svcparams
+                    'svcparams': svcparams,
                 }
             )
         return {'type': _type, 'ttl': records[0]['ttl'], 'values': values}
@@ -575,17 +575,14 @@ class DesecProvider(BaseProvider):
         return list(record.values), record._type
 
     def _records_for_multiple_quoted(self, record):
-        return [
-            f'"{v}"' for v in record.values
-        ], record._type
+        return [f'"{value}"' for value in record.values], record._type
 
     def _records_for_single(self, record):
         return [record.value], record._type
 
     def _records_for_MX(self, record):
         return [
-            f'{value.preference} {value.exchange}'
-            for value in record.values
+            f'{value.preference} {value.exchange}' for value in record.values
         ], record._type
 
     def _records_for_SRV(self, record):
