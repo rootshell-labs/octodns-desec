@@ -9,6 +9,7 @@ import requests
 from octodns.provider import ProviderException
 from octodns.provider.base import BaseProvider
 from octodns.record import Record
+from octodns.record.https import HttpsValue
 
 __version__ = __VERSION__ = '1.3.0'
 
@@ -526,23 +527,8 @@ class DesecProvider(BaseProvider):
     def _data_for_HTTPS(self, _type, records):
         values = []
         for record in records:
-            svcparams = {}
-            if len(record['data'].split(' ')) > 2:
-                # iterate over all elements from index 2 to $last
-                for parameter in record['data'].split(' ')[2:]:
-                    k,v = parameter.split('=', maxsplit=1)
-                    # convert some parameters to list
-                    if k in ('alpn', 'ipv4hint', 'ipv6hint') :
-                        v = v.split(',')
-                    svcparams[k] = v
-
-            values.append(
-                {
-                    'svcpriority': record['data'].split(' ')[0],
-                    'targetname': record['data'].split(' ')[1],
-                    'svcparams': svcparams
-                }
-            )
+            value = HttpsValue.parse_rdata_text(record['data'])
+            values.append(value)
         return {'type': _type, 'ttl': records[0]['ttl'], 'values': values}
 
     def _data_for_SSHFP(self, _type, records):
